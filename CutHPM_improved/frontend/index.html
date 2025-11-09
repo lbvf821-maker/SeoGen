@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AlmaCut3D</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+<body>
+    <div id="left">
+        <h2>AlmaCut3D v2.1.0</h2>
+
+        <h3>Режим работы</h3>
+        <div style="margin-bottom: 15px;">
+            <label><input type="radio" name="mode" value="manual" checked> Ручной ввод блока</label><br>
+            <label><input type="radio" name="mode" value="database"> Выбор из базы данных</label><br>
+            <label><input type="radio" name="mode" value="reverse"> Автоподбор размера блока</label>
+        </div>
+
+        <div id="manual-mode">
+            <h3>Блок</h3>
+            <div>
+                <label>L: <input type="number" id="blockL" value="2000"></label>
+                <label>W: <input type="number" id="blockW" value="1200"></label>
+                <label>H: <input type="number" id="blockH" value="800"></label>
+            </div>
+        </div>
+
+        <div id="database-mode" style="display: none;">
+            <h3>Выбор блока из БД</h3>
+            <div>
+                <label>Материал:
+                    <select id="materialFilter">
+                        <option value="">Все</option>
+                        <option value="Сталь">Сталь</option>
+                        <option value="Алюминий">Алюминий</option>
+                    </select>
+                </label>
+                <button id="loadBlocks" style="margin-left: 10px;">Загрузить блоки</button>
+            </div>
+            <div id="blocksList" style="margin-top: 10px;"></div>
+        </div>
+
+        <div id="reverse-mode" style="display: none;">
+            <h3>Автоподбор блока</h3>
+            <p style="font-size: 12px; color: #666;">Программа автоматически подберет оптимальный размер блока для ваших деталей</p>
+            <label>Целевая заполняемость (%): <input type="number" id="targetUtil" value="80" min="50" max="99"></label>
+        </div>
+
+        <h3>Детали</h3>
+        <textarea id="items" rows="6">1,200,300,400,5
+2,150,250,300,8
+3,100,200,250,10</textarea>
+        <small>Формат: id,l,w,h,qty<br>
+        • id - идентификатор детали (число)<br>
+        • l, w, h - размеры (длина, ширина, высота)<br>
+        • qty - количество заготовок</small>
+
+        <h3>Параметры раскроя</h3>
+        <div>
+            <label>Kerf (мм): <input type="number" id="kerf" value="4" min="0" step="0.1"></label>
+            <label>
+                <input type="checkbox" id="allowRotations" checked>
+                Разрешить вращения деталей
+            </label>
+        </div>
+
+        <h3>Настройки алгоритма</h3>
+        <div>
+            <label>
+                Итераций: <input type="number" id="iterations" value="10" min="1" max="50">
+                <small>Больше итераций = лучше результат, но дольше</small>
+            </label>
+        </div>
+
+        <button id="run">Сгенерировать</button>
+
+        <div style="margin-top: 20px; padding: 10px; background: #f0f8ff; border-radius: 5px; font-size: 12px;">
+            <strong>Telegram бот:</strong><br>
+            1. Найдите бота: <code>@YourBotName</code><br>
+            2. Отправьте детали в формате:<br>
+            <code>1,200,300,400,5<br>2,150,250,300,8</code><br>
+            3. Бот автоматически подберет лучший блок из БД
+        </div>
+        
+        <div id="result"></div>
+        
+        <div id="stats-table" style="display: none; margin-top: 20px;">
+            <h3>Таблица заполнения</h3>
+            <table style="width: 100%; border-collapse: collapse; font-size: 12px; background: #fff;">
+                <thead>
+                    <tr style="background: #f0f0f0;">
+                        <th style="border: 1px solid #ddd; padding: 5px;">Деталь ID</th>
+                        <th style="border: 1px solid #ddd; padding: 5px;">Размеры (L×W×H)</th>
+                        <th style="border: 1px solid #ddd; padding: 5px;">Объем</th>
+                        <th style="border: 1px solid #ddd; padding: 5px;">Кол-во</th>
+                        <th style="border: 1px solid #ddd; padding: 5px;">Всего объем</th>
+                    </tr>
+                </thead>
+                <tbody id="stats-tbody"></tbody>
+                <tfoot>
+                    <tr style="background: #f9f9f9; font-weight: bold;">
+                        <td colspan="4" style="border: 1px solid #ddd; padding: 5px;">Блок</td>
+                        <td id="block-volume" style="border: 1px solid #ddd; padding: 5px;"></td>
+                    </tr>
+                    <tr style="background: #e8f5e9;">
+                        <td colspan="4" style="border: 1px solid #ddd; padding: 5px;">Использовано</td>
+                        <td id="filled-volume" style="border: 1px solid #ddd; padding: 5px;"></td>
+                    </tr>
+                    <tr style="background: #ffebee;">
+                        <td colspan="4" style="border: 1px solid #ddd; padding: 5px;">Отходы</td>
+                        <td id="waste-volume" style="border: 1px solid #ddd; padding: 5px;"></td>
+                    </tr>
+                    <tr style="background: #fff3e0; font-size: 14px; font-weight: bold;">
+                        <td colspan="4" style="border: 1px solid #ddd; padding: 5px;">Заполняемость</td>
+                        <td id="utilization-percent" style="border: 1px solid #ddd; padding: 5px;"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <div id="tree-view" style="display: none; margin-top: 20px;">
+            <h3>Программа раскроя (Cutting Program)</h3>
+            <div id="tree-container" style="max-height: 500px; overflow-y: auto; font-family: monospace; font-size: 11px; background: #f9f9f9; padding: 10px; border-radius: 3px; border: 1px solid #ddd;"></div>
+        </div>
+    </div>
+    
+    <div id="right">
+        <div id="controls-panel" style="position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.9); padding: 15px; border-radius: 5px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 10; min-width: 200px;">
+            <h4 style="margin: 0 0 10px 0; font-size: 14px;">Управление</h4>
+            <label style="display: block; margin-bottom: 10px; font-size: 12px;">
+                Прозрачность: <span id="opacity-value">100%</span>
+                <input type="range" id="opacity-slider" min="0" max="100" value="100" style="width: 100%; margin-top: 5px;">
+            </label>
+            <small style="color: #666; font-size: 10px;">Вращение: мышью</small>
+        </div>
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <script type="module" src="/static/app.js?v=1762609468"></script>
+    <script src="/static/app_modes.js?v=1762609468"></script>
+    <script src="/static/app_patch.js?v=1762609468"></script>
+</body>
+</html>
