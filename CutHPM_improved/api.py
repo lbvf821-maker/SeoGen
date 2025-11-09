@@ -161,14 +161,19 @@ def optimize_endpoint(req: OptimizeRequest):
         # Получаем все размещенные детали
         # Сначала пробуем взять из stats (Maximal Spaces / Hybrid возвращают placed_items)
         if 'placed_items' in stats and stats['placed_items']:
-            items_placed = [
-                {
-                    "item_id": placed.item_id,
-                    "position": {"x": placed.x, "y": placed.y, "z": placed.z},
-                    "dimensions": {"l": placed.length, "w": placed.width, "h": placed.height}
-                }
-                for placed in stats['placed_items']
-            ]
+            # ИСПРАВЛЕНО: Проверяем, это уже словарь или объект PlacedItem
+            items_placed = []
+            for placed in stats['placed_items']:
+                if isinstance(placed, dict):
+                    # Уже словарь (улучшенный алгоритм)
+                    items_placed.append(placed)
+                else:
+                    # Объект PlacedItem (старые алгоритмы)
+                    items_placed.append({
+                        "item_id": placed.item_id,
+                        "position": {"x": placed.x, "y": placed.y, "z": placed.z},
+                        "dimensions": {"l": placed.length, "w": placed.width, "h": placed.height}
+                    })
         else:
             # Fallback: используем дерево паттернов (для чистого Guillotine)
             all_items = best_pattern.get_all_items((0, 0, 0), req.tech.kerf) if best_pattern else []
