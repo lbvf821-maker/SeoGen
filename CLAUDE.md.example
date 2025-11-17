@@ -1,0 +1,433 @@
+# SeoGen Project - Claude Assistant Context
+
+> **ВАЖНО:** Это пример файла CLAUDE.md для проекта SeoGen.
+> Переименуйте в `CLAUDE.md` и адаптируйте под свой проект.
+> Держите файл компактным (до 5000 токенов) — он читается при каждом запросе!
+
+---
+
+## 📋 О проекте
+
+**SeoGen** — [краткое описание проекта в 1-2 предложениях]
+
+**Основная цель:** [главная функциональность]
+
+---
+
+## 🛠️ Технологии
+
+### Основной стек
+- Python 3.10+
+- [Основные библиотеки и их версии]
+
+### Зависимости
+- [Библиотека 1] — [назначение]
+- [Библиотека 2] — [назначение]
+
+---
+
+## 📁 Структура проекта
+
+```
+SeoGen/
+├── src/              # Основной код приложения
+│   ├── api/         # API endpoints (если есть)
+│   ├── core/        # Ядро приложения
+│   ├── models/      # Модели данных
+│   ├── services/    # Бизнес-логика
+│   └── utils/       # Утилиты
+├── tests/           # Тесты
+├── docs/            # Документация
+└── scripts/         # Вспомогательные скрипты
+```
+
+**Ключевые модули:**
+- `[модуль1]` — [назначение]
+- `[модуль2]` — [назначение]
+
+---
+
+## 🎨 Стандарты кодирования
+
+### Обязательно
+
+✅ **Type hints** для всех функций и методов
+```python
+def process_data(item: dict[str, Any], count: int) -> list[Result]:
+    pass
+```
+
+✅ **Docstrings** в формате Google
+```python
+def function_name(param1: str, param2: int) -> bool:
+    """Brief description.
+
+    Args:
+        param1: Description of param1
+        param2: Description of param2
+
+    Returns:
+        Description of return value
+
+    Raises:
+        ValueError: When condition
+    """
+```
+
+✅ **Обработка исключений** — ловить конкретные типы
+```python
+try:
+    result = process()
+except FileNotFoundError as e:
+    logger.error(f"File not found: {e}")
+    raise
+```
+
+### Запрещено
+
+❌ Не использовать `.format()` — используй f-strings
+❌ Не делать `except Exception:` без необходимости
+❌ Не оставлять `print()` в production коде — используй `logging`
+❌ Не создавать функции длиннее 50 строк без веской причины
+
+### Инструменты
+
+- **Линтер:** [Ruff/Pylint/Flake8]
+- **Форматтер:** [Black/autopep8]
+- **Тесты:** [pytest/unittest]
+
+---
+
+## 🏗️ Архитектурные паттерны
+
+### Создание нового API endpoint (если применимо)
+
+```python
+from fastapi import APIRouter, Depends, HTTPException
+from src.schemas import ResourceCreate, ResourceResponse
+from src.services import ResourceService
+
+router = APIRouter(prefix="/resources", tags=["resources"])
+
+@router.post("/", response_model=ResourceResponse, status_code=201)
+async def create_resource(
+    data: ResourceCreate,
+    service: ResourceService = Depends(get_service)
+) -> ResourceResponse:
+    """Create a new resource."""
+    try:
+        return await service.create(data)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+```
+
+### Создание сервисного класса
+
+```python
+from typing import Protocol
+
+class BaseService(Protocol):
+    """Base service interface."""
+
+    async def get_by_id(self, id: int) -> Model | None:
+        """Retrieve entity by ID."""
+        ...
+
+class ConcreteService:
+    """Concrete service implementation."""
+
+    def __init__(self, repository: Repository):
+        self._repo = repository
+
+    async def get_by_id(self, id: int) -> Model | None:
+        """Retrieve entity by ID."""
+        return await self._repo.find_one(id)
+```
+
+### Логирование
+
+```python
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Уровни логирования:
+logger.debug("Detailed information")     # Отладка
+logger.info("General information")       # Информация
+logger.warning("Warning message")        # Предупреждение
+logger.error("Error occurred")           # Ошибка
+logger.critical("Critical failure")      # Критическая ошибка
+```
+
+---
+
+## 🔧 Часто используемые паттерны
+
+### Валидация входных данных
+
+```python
+def validate_input(data: dict[str, Any]) -> dict[str, Any]:
+    """Validate and sanitize input data.
+
+    Args:
+        data: Raw input data
+
+    Returns:
+        Validated data
+
+    Raises:
+        ValueError: If validation fails
+    """
+    required_fields = ["field1", "field2"]
+    for field in required_fields:
+        if field not in data:
+            raise ValueError(f"Missing required field: {field}")
+
+    # Type validation
+    if not isinstance(data["field1"], str):
+        raise TypeError(f"field1 must be str, got {type(data['field1'])}")
+
+    return data
+```
+
+### Работа с файлами
+
+```python
+from pathlib import Path
+
+def read_config(config_path: str | Path) -> dict[str, Any]:
+    """Read configuration from file.
+
+    Args:
+        config_path: Path to config file
+
+    Returns:
+        Configuration dictionary
+
+    Raises:
+        FileNotFoundError: If file doesn't exist
+        ValueError: If file format is invalid
+    """
+    path = Path(config_path)
+    if not path.exists():
+        raise FileNotFoundError(f"Config not found: {path}")
+
+    with path.open("r", encoding="utf-8") as f:
+        return json.load(f)
+```
+
+### Обработка ошибок API/внешних сервисов
+
+```python
+import httpx
+from tenacity import retry, stop_after_attempt, wait_exponential
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=10)
+)
+async def fetch_external_data(url: str) -> dict[str, Any]:
+    """Fetch data from external API with retries.
+
+    Args:
+        url: API endpoint URL
+
+    Returns:
+        Response data
+
+    Raises:
+        httpx.HTTPError: On network/HTTP errors after retries
+    """
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        response = await client.get(url)
+        response.raise_for_status()
+        return response.json()
+```
+
+---
+
+## ⚠️ Анти-паттерны (НЕ делать!)
+
+### ❌ Не смешивать sync/async без причины
+
+```python
+# ПЛОХО:
+async def bad_function():
+    result = sync_blocking_call()  # Блокирует event loop!
+    return result
+
+# ХОРОШО:
+async def good_function():
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(None, sync_blocking_call)
+    return result
+```
+
+### ❌ Не игнорировать исключения молча
+
+```python
+# ПЛОХО:
+try:
+    process()
+except:
+    pass  # Ошибка потеряна навсегда!
+
+# ХОРОШО:
+try:
+    process()
+except SpecificError as e:
+    logger.error(f"Failed to process: {e}")
+    raise  # Или обработать осмысленно
+```
+
+### ❌ Не мутировать аргументы по умолчанию
+
+```python
+# ПЛОХО:
+def add_item(item: str, items: list = []) -> list:  # BUG!
+    items.append(item)
+    return items
+
+# ХОРОШО:
+def add_item(item: str, items: list | None = None) -> list:
+    if items is None:
+        items = []
+    items.append(item)
+    return items
+```
+
+---
+
+## 🧪 Тестирование
+
+### Структура тестов
+
+```python
+import pytest
+from src.module import function_to_test
+
+class TestFunctionName:
+    """Tests for function_to_test."""
+
+    def test_happy_path(self):
+        """Test normal execution."""
+        result = function_to_test("valid_input")
+        assert result == expected_value
+
+    def test_edge_case_empty_input(self):
+        """Test with empty input."""
+        result = function_to_test("")
+        assert result == []
+
+    def test_error_invalid_type(self):
+        """Test error handling for invalid type."""
+        with pytest.raises(TypeError):
+            function_to_test(123)
+```
+
+### Фикстуры
+
+```python
+@pytest.fixture
+def sample_data():
+    """Provide sample data for tests."""
+    return {
+        "id": 1,
+        "name": "Test",
+        "value": 42
+    }
+
+def test_with_fixture(sample_data):
+    """Test using fixture."""
+    result = process(sample_data)
+    assert result.id == 1
+```
+
+---
+
+## 📝 Правила для Claude
+
+### При создании нового кода
+
+1. **ВСЕГДА** добавляй type hints
+2. **ВСЕГДА** добавляй docstrings
+3. **ВСЕГДА** обрабатывай граничные случаи (None, пустые коллекции, и т.д.)
+4. **ВСЕГДА** логируй важные операции
+5. **НЕ** создавай функции без валидации входных данных
+6. **НЕ** оставляй TODO комментарии — решай задачу сразу или говори, что нужно
+
+### При исправлении ошибок
+
+1. **НЕ** переписывай весь файл — изменяй только проблемную часть
+2. **ВСЕГДА** объясняй причину ошибки кратко (1-2 предложения)
+3. **ВСЕГДА** проверяй, не сломается ли другой код после изменений
+4. **Если ошибка повторяется** — предложи системное решение (утилиту, валидатор, и т.д.)
+
+### При рефакторинге
+
+1. **НЕ** усложняй без необходимости — простое решение лучше
+2. **НЕ** добавляй "enterprise patterns" если не требуется
+3. **СОХРАНЯЙ** существующие интерфейсы (сигнатуры функций) если возможно
+4. **ПИШИ** тесты если меняешь критичную логику
+
+---
+
+## 🚀 Быстрые команды
+
+```bash
+# Установка зависимостей
+pip install -r requirements.txt
+
+# Запуск тестов
+pytest
+
+# Запуск линтера
+ruff check .
+
+# Форматирование
+black .
+
+# Запуск приложения
+python -m src.main
+```
+
+---
+
+## 📚 Полезные ссылки
+
+- [Документация проекта](./docs/)
+- [Руководство по промптам](./PYTHON_PROMPT_GUIDE.md)
+- [Шаблоны промптов](./PROMPT_TEMPLATES.md)
+
+---
+
+## 💡 Советы по использованию Claude
+
+### Эффективные запросы
+
+**✅ ХОРОШО:**
+```
+Файл: src/utils/parser.py
+Функция: parse_csv()
+
+Добавь валидацию: проверяй, что email содержит @, age в диапазоне 0-150.
+Выбрасывай ValueError с понятным сообщением при ошибке.
+
+Покажи только изменённую функцию.
+```
+
+**❌ ПЛОХО:**
+```
+Сделай лучше функцию парсинга
+```
+
+### Управление контекстом
+
+- `/clear` — после завершения несвязанной задачи
+- `/compact` — каждые 5-7 промптов в длинной сессии
+- `/cost` — проверка расхода токенов
+
+---
+
+**Последнее обновление:** 2025-11-17
+**Версия:** 1.0
